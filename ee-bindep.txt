@@ -1,10 +1,1 @@
-python38-devel
-git
-curl
-which
-bash
-gcc
-terraform
-nano
-vim
-unzip
+#python38-devel
