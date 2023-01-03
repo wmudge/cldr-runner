@@ -19,14 +19,15 @@ additional_build_steps:
   prepend: |
     ENV CLDR_BUILD_VER=${BUILD_TAG:-latest}
     COPY . /tmp/src
-    RUN mv /tmp/src/bashrc /home/runner/.bashrc
-    RUN mv /tmp/src/repos/*.repo /etc/yum.repos.d/
-    RUN rpm --import https://packages.microsoft.com/keys/microsoft.asc
-    RUN dnf install -y terraform kubectl
-    RUN dnf clean expire-cache
-    RUN /usr/bin/python3 -m pip install --upgrade pip
+    RUN mv /tmp/src/bashrc /home/runner/.bashrc && \
+        mv /tmp/src/repos/*.repo /etc/yum.repos.d/ && \
+        rpm --import https://packages.microsoft.com/keys/microsoft.asc && \
+        dnf install -y terraform kubectl && \
+        dnf clean all -y && \
+        /usr/bin/python3 -m pip install --upgrade pip && \
+        /usr/bin/python3 -m pip cache purge
   append: |
-    RUN echo "Purging Pip cache" && pip cache purge || echo "No Pip cache to purge"
-    RUN echo "Cleaning dnf/yum cache" && dnf clean all
-    RUN rm -rf /var/cache/yum
-    RUN rm -rf /var/cache/dnf
+    RUN echo "Purging Pip cache" && pip cache purge || echo "No Pip cache to purge" && \
+        echo "Cleaning dnf/yum cache" && dnf clean all -y && \
+        rm -rf /var/cache/yum && \
+        rm -rf /var/cache/dnf
