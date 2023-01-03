@@ -7,3 +7,11 @@ collections:
   - name: https://github.com/wmudge/cloudera.exe.git
     type: git
     version: feature/builder-ex-env
+
+roles:
+  - name: geerlingguy.postgresql
+    version: 2.2.0
+
+  # geerlingguy.mysql with fix for issue #332
+  - src: https://github.com/dbeech/ansible-role-mysql
+    version: master
