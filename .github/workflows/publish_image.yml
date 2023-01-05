@@ -3,6 +3,9 @@
 name: Build Execution Environment
 
 on:
+  pull_request:
+    branches: [ feature/builder-ex-env ]
+    types: [ labeled ]
   workflow_dispatch:
     inputs:
       EE_CONTEXT_FOLDER:
