@@ -1,0 +1,114 @@
+---
+# See https://github.com/cloin/ee-builds
+
+name: Build Execution Environment
+
+on:
+  workflow_call:
+    inputs:
+      EE_CONTEXT_FOLDER:
+        description: 'name of the folder where the EE is located (will become the image tag of the EE)'
+        default: ''
+        required: true
+        type: string
+      REGISTRY_SITE:
+        description: 'registry site (e.g. ghcr.io)'
+        default: 'ghcr.io'
+        required: false
+        type: string
+      REGISTRY_OWNER:
+        description: 'registry repository owner, e.g. cloudera-labs'
+        default: ${{ github.repository_owner }}
+        required: false
+        type: string
+      REGISTRY_PROJECT:
+        description: 'registry repository project, e.g. cldr-runner (will become the image name of the EE)'
+        default: ${{ github.event.repository.name }}
+        required: false
+        type: string
+      REGISTRY_USER:
+        description: 'registry username'
+        default: ${{ github.actor }}
+        required: false
+        type: string
+    secrets:
+      REGISTRY_PASSWORD:
+        description: 'registry password or token'
+        default: ${{ github.token }}
+        required: false
+        type: string
+    outputs:
+      IMAGE:
+        description: 'the constructed and pushed image paths'
+        value: ${{ jobs.push-image.outputs.registry_paths }}
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        
+      - name: Install ansible-builder
+        run: pip install ansible-builder==1.2.0
+
+      - name: Construct image metadata
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: |
+            ${{ inputs.REGISTRY_OWNER }}/${{ inputs.REGISTRY_PROJECT }}
+          tags: |
+            type=sha
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+
+      - name: Build image
+        working-directory: ${{ inputs.EE_CONTEXT_FOLDER }}
+        # This uses the working directory as the context folder itself
+        run: |
+          ansible-builder build \
+          --context=../${{ inputs.EE_CONTEXT_FOLDER }} \
+          --tag=${{ inputs.REGISTRY_PROJECT}}:${{ github.sha }}
+      
+      - name: Push image
+        id: push-image
+        uses: redhat-actions/push-to-registry@v2
+        with:
+          image: ${{ inputs.REGISTRY_PROJECT }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          registry: ${{ inputs.REGISTRY_SITE }}/${{ inputs.REGISTRY_OWNER }}/
+          username: ${{ env.REGISTRY_USER }}
+          password: ${{ env.REGISTRY_PASSWORD }}
+
+      - name: Print summary
+        working-directory: ${{ inputs.EE_CONTEXT_FOLDER }}
+        run: |
+          echo "## :rocket: Usage" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## :rocket: Usage" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Image pushed to repository: [${{ steps.push-image.outputs.registry-path }}](https://${{ steps.push-image.outputs.registry-path }})" >> $GITHUB_STEP_SUMMARY
+          echo "> \`podman pull ${{ steps.push-image.outputs.registry-path }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "> \`podman pull ${{ inputs.REGISTRY_SITE }}/${{ inputs.REGISTRY_OWNER }}/${{ inputs.REGISTRY_PROJECT }}:${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "## :pushpin: Ansible info:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "`podman run ${{ inputs.EE_CONTEXT_FOLDER }} ansible --version`" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "## :pushpin: Installed collections:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "`podman run ${{ inputs.EE_CONTEXT_FOLDER }} ansible-galaxy collection list`" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "## :pushpin: Installed roles:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "`podman run ${{ inputs.EE_CONTEXT_FOLDER }} ansible-galaxy collection role`" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "## :pushpin: Containerfile:" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "`cat Containerfile`" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,18 @@
+---
+
+name: Build Execution Environment
+
+on:
+  workflow_dispatch:
+    inputs:
+      EE_CONTEXT_FOLDER:
+        description: 'name of the folder where the EE is located'
+        default: 'context'
+        required: false
+        type: string
+
+jobs:
+  call-build-workflow:
+    uses: ./.github/workflows/build_and_push_image.yml
+    with:
+      EE_CONTEXT_FOLDER: ${{ inputs.EE_CONTEXT_FOLDER }}
